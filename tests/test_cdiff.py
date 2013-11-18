@@ -11,6 +11,7 @@ import unittest
 import tempfile
 import subprocess
 import os
+import shutil
 
 sys.path.insert(0, '')
 import cdiff
@@ -718,25 +719,28 @@ class MainTest(unittest.TestCase):
         self._cwd = os.getcwd()
         self._ws = tempfile.mkdtemp(prefix='test_cdiff')
         self._non_ws = tempfile.mkdtemp(prefix='test_cdiff')
-        cmd = ('cd %s; git init; git config user.name me; '
-               'git config user.email me@example.org') % self._ws
-        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE)
+        cmd = 'git init'
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, cwd=self._ws)
+        cmd = 'git config user.name me'
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, cwd=self._ws)
+        cmd = 'git config user.email me@example.org'
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, cwd=self._ws)
         self._change_file('init')
 
     def tearDown(self):
         os.chdir(self._cwd)
-        cmd = ['/bin/rm', '-rf', self._ws, self._non_ws]
-        subprocess.call(cmd)
+        shutil.rmtree(self._ws, True)
+        shutil.rmtree(self._non_ws, True)
 
     def _change_file(self, text):
-        cmd = ['/bin/sh', '-c',
-               'cd %s; echo "%s" > foo' % (self._ws, text)]
-        subprocess.call(cmd)
+        with open(os.path.join(self._ws, 'foo'), 'wb') as foo:
+            foo.write("%s\n" % text)
 
     def _commit_file(self):
-        cmd = ['/bin/sh', '-c',
-               'cd %s; git add foo; git commit foo -m update' % self._ws]
-        subprocess.call(cmd, stdout=subprocess.PIPE)
+        cmd = 'git add foo'
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, cwd=self._ws)
+        cmd = 'git commit foo -m update'
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, cwd=self._ws)
 
     def test_read_diff(self):
         sys.argv = sys.argv[:1]
